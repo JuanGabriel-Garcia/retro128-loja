@@ -51,6 +51,25 @@ jobs:
       - name: Configurar Pages
         uses: actions/configure-pages@v5
 
+      # Ação corretiva do incidente 2.0.0: impede publicar uma versão cujas
+      # capas não existem na pasta configurada (pastaCapas).
+      - name: Validar a release (capas do catálogo existem)
+        run: |
+          python3 - <<'EOF'
+          import json, os, sys
+          config = json.load(open("config/app-config.json", encoding="utf-8"))
+          catalogo = json.load(open(config["catalogoUrl"], encoding="utf-8"))
+          pasta = config["pastaCapas"]
+          faltando = [pasta + j["capa"] for j in catalogo["jogos"]
+                      if not os.path.isfile(pasta + j["capa"])]
+          if faltando:
+              print(f"::error::{len(faltando)} capa(s) não encontrada(s) em '{pasta}' - deploy bloqueado")
+              for f in faltando:
+                  print("  -", f)
+              sys.exit(1)
+          print(f"OK: {len(catalogo['jogos'])} capas encontradas em '{pasta}'")
+          EOF
+
       - name: Empacotar o site
         uses: actions/upload-pages-artifact@v3
         with:
